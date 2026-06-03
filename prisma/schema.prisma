@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Negocio {
+  id       String  @id @default(uuid())
+  nombre   String
+  slug     String  @unique
+  plan     Plan    @default(SOLO)
+  socios   Socio[]
+  creadoEn DateTime @default(now()) @map("creado_en")
+
+  @@map("negocios")
+}
+
+enum Plan {
+  SOLO
+  MULTI
+}
+
+model Socio {
+  id           String       @id @default(uuid())
+  negocioId    String       @map("negocio_id")
+  negocio      Negocio      @relation(fields: [negocioId], references: [id])
+  nombre       String
+  email        String       @unique
+  passwordHash String       @map("password_hash")
+  rol          Rol          @default(SOCIO)
+  productos    Producto[]
+  sesiones     SesionCaja[]
+  creadoEn     DateTime     @default(now()) @map("creado_en")
+
+  @@map("socios")
+}
+
+enum Rol {
+  ADMIN
+  SOCIO
+}
+
+model Producto {
+  id          String         @id @default(uuid())
+  socioId     String         @map("socio_id")
+  socio       Socio          @relation(fields: [socioId], references: [id])
+  nombre      String
+  valor       Decimal
+  stock       Int            @default(0)
+  imagenUrl   String?        @map("imagen_url")
+  descripcion String?
+  qrCode      String?        @map("qr_code")
+  activo      Boolean        @default(true)
+  detalles    DetalleVenta[]
+  alertas     Alerta[]
+  creadoEn    DateTime       @default(now()) @map("creado_en")
+
+  @@map("productos")
+}
+
+model SesionCaja {
+  id          String   @id @default(uuid())
+  socioId     String   @map("socio_id")
+  socio       Socio    @relation(fields: [socioId], references: [id])
+  apertura    DateTime @default(now())
+  cierre      DateTime?
+  totalSesion Decimal  @default(0) @map("total_sesion")
+  estado      EstadoSesion @default(ABIERTA)
+  ventas      Venta[]
+
+  @@map("sesiones_caja")
+}
+
+enum EstadoSesion {
+  ABIERTA
+  CERRADA
+}
+
+model Venta {
+  id        String         @id @default(uuid())
+  sesionId  String         @map("sesion_id")
+  sesion    SesionCaja     @relation(fields: [sesionId], references: [id])
+  total     Decimal
+  estado    EstadoVenta    @default(CONFIRMADA)
+  detalles  DetalleVenta[]
+  creadoEn  DateTime       @default(now()) @map("creado_en")
+
+  @@map("ventas")
+}
+
+enum EstadoVenta {
+  CONFIRMADA
+  ANULADA
+}
+
+model DetalleVenta {
+  id           String   @id @default(uuid())
+  ventaId      String   @map("venta_id")
+  venta        Venta    @relation(fields: [ventaId], references: [id])
+  productoId   String   @map("producto_id")
+  producto     Producto @relation(fields: [productoId], references: [id])
+  cantidad     Int
+  precioUnit   Decimal  @map("precio_unit")
+
+  @@map("detalle_ventas")
+}
+
+model Alerta {
+  id          String   @id @default(uuid())
+  productoId  String   @map("producto_id")
+  producto    Producto @relation(fields: [productoId], references: [id])
+  stockMinimo Int      @default(5) @map("stock_minimo")
+  activa      Boolean  @default(true)
+  creadoEn    DateTime @default(now()) @map("creado_en")
+
+  @@map("alertas")
+}
